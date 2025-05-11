@@ -2,6 +2,7 @@
 using AuthenticationService.DTOs.Responses;
 using AuthenticationService.Enums;
 using AuthenticationService.Interfaces.Services;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 using RegisterRequest = AuthenticationService.DTOs.Requests.RegisterRequest;
 
@@ -124,7 +125,8 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
                 new ProblemDetails { Detail = "Unexpected error." })
         };
     }
-    
+
+    [Authorize(Roles = "Vendor")]
     [HttpPost("/vendor-policy")]
     public  IActionResult CheckForVendorPolicy([FromBody] CheckForPolicyRequest request)
     {
@@ -138,7 +140,8 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
                 new ProblemDetails { Detail = "Unexpected error." })
         };
     }
-    
+
+    [Authorize(Roles = "Admin")]
     [HttpPost("/admin-policy")]
     public  IActionResult CheckForAdminPolicy([FromBody] CheckForPolicyRequest request)
     {
@@ -153,6 +156,7 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
         };
     }
 
+    [Authorize(Roles = "Admin")]
     [HttpGet("/user/{email}")]
     public async Task<IActionResult> GetUserInfo([FromRoute] string email)
     {
@@ -173,6 +177,7 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
         };
     }
 
+    [Authorize(Roles = "Customer")]
     [HttpPut("/customer/{email}")]
     public async Task<IActionResult> UpdateCustomerInfo([FromRoute] string email, [FromBody] UpdateCustomerRequest request)
     {
