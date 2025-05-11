@@ -1,0 +1,209 @@
+services:
+  rabbitmq:
+    image: rabbitmq:3-management
+    container_name: rabbitmq
+    ports:
+      - '5672:5672'
+      - '15672:15672'
+    environment:
+      RABBITMQ_DEFAULT_USER: guest
+      RABBITMQ_DEFAULT_PASS: guest
+    healthcheck:
+      test: ['CMD-SHELL', 'rabbitmqctl node_health_check']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: '30s'
+    networks:
+      - app-network
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq/mnesia
+
+  redis:
+    image: redis:latest
+    container_name: redis
+    ports:
+      - '6379:6379'
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks:
+      - app-network
+
+  mysql:
+    image: mysql:8.0
+    container_name: mysql-dev
+    ports:
+      - '3306:3306'
+    environment:
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: orders_db
+      MYSQL_USER: myuser
+      MYSQL_PASSWORD: mypassword
+    healthcheck:
+      test: ['CMD', 'mysqladmin', 'ping', '-h', 'localhost']
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: '30s'
+    networks:
+      - app-network
+    volumes:
+      - ./init.sql:/docker-entrypoint-initdb.d/init.sql
+
+  auth-service:
+    build:
+      context: ./AuthenticationService/AuthenticationService
+    container_name: auth-service
+    ports:
+      - '8086:8086'
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Host=postgres;Database=authentication_service;Username=electi;Password=536051;Port=5432;Pooling=true;
+      - ASPNETCORE_URLS=http://+:8086
+    networks:
+      - app-network
+
+  postgres:
+    image: postgres:16
+    container_name: postgres
+    restart: always
+    environment:
+      POSTGRES_DB: authentication_service
+      POSTGRES_USER: electi
+      POSTGRES_PASSWORD: 536051
+    ports:
+      - '5432:5432'
+    volumes:
+      - pgdata:/var/lib/postgresql/data
+    networks:
+      - app-network
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U electi -d authentication_service']
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  payment-service:
+    build:
+      context: ./payment
+    container_name: payment-service
+    ports:
+      - '9001:9001'
+    environment:
+      DATABASE_HOST: mysql
+      DATABASE_NAME: payments_db
+      DATABASE_USER: root
+      DATABASE_PASSWORD: root
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  order-service:
+    build:
+      context: ./order
+    container_name: order-service
+    ports:
+      - '8080:8080'
+    environment:
+      DATABASE_HOST: mysql
+      DATABASE_NAME: orders_db
+      DATABASE_USER: root
+      DATABASE_PASSWORD: root
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+    depends_on:
+      mysql:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    networks:
+      - app-network
+
+  orchestration-service:
+    build:
+      context: ./orchestration_service
+    container_name: orchestration-service
+    ports:
+      - '7001:7001'
+    environment:
+      RABBITMQ_HOST: rabbitmq
+      RABBITMQ_PORT: 5672
+      RABBITMQ_USER: guest
+      RABBITMQ_PASSWORD: guest
+      REDIS_HOST: redis
+      REDIS_PORT: 6379
+      REDIS_DB: 0
+      AUTHERIZATION_SERVER_HOST: http://auth-service
+      AUTHERIZATION_SERVER_PORT: 8086
+    depends_on:
+      rabbitmq:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+      auth-service:
+        condition: service_started
+    networks:
+      - app-network
+
+  mongodb:
+    image: mongo:6
+    container_name: mongodb
+    ports:
+      - '27017:27017'
+    volumes:
+      - mongo-data:/data/db
+    healthcheck:
+      test: echo 'db.runCommand("ping").ok' | mongosh localhost:27017/test --quiet
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+    networks:
+      - app-network
+
+  product-and-inventory-go:
+    build:
+      context: ./inventory_go
+    container_name: go_app
+    depends_on:
+      mongodb:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+    environment:
+      - RABBITMQ_URL=amqp://guest:guest@rabbitmq:5672
+      - ORCHESTRATION_QUEUE=orchestration_queue
+      - PRODUCT_QUEUE=products_queue
+      - MONGO_URL=mongodb://mongodb:27017/inventory
+      - CATEGORY_COLLECTION=categories
+      - PRODUCT_COLLECTION=products
+      - TRANSACTION_COLLECTION=transactions
+    ports:
+      - '9292:9292'
+    networks:
+      - app-network
+
+networks:
+  app-network:
+    driver: bridge
+
+volumes:
+  pgdata:
+  mongo-data:
+  rabbitmq_data:

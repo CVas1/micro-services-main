@@ -1,0 +1,6 @@
+version: "3.8"
+services:
+  rabbitmq:
+    ports: []      # <— clears out the 5672 & 15672 bindings
+  mysql:
+    ports: []      # <— clears out the 3306 binding

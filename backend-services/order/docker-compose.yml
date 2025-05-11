@@ -1,0 +1,60 @@
+version: "3.9"
+
+services:
+  db:
+    image: mysql:8.0
+    container_name: mysql-dev
+    restart: always
+    environment:
+      MYSQL_ROOT_PASSWORD: /run/secrets/DATABASE_PASSWORD
+      MYSQL_USER: /run/secrets/DATABASE_USER
+      MYSQL_PASSWORD: /run/secrets/DB_PASSWORD
+      MYSQL_DATABASE: /run/secrets/DATABASE_NAME
+    ports:
+      - "3306:3306"
+    volumes:
+      - mysql_data:/var/lib/mysql
+    networks:
+      - app_network
+    secrets:
+      - DB_PASSWORD
+      - DB_USER
+      - DB_NAME
+
+  app:
+    build:
+      context: .
+      target: production
+    image: leadspotr:1.0.0
+    ports:
+      - "80:80"
+    depends_on:
+      - db
+    environment:
+      DATABASE_USER: /run/secrets/DB_USER
+      DATABASE_PASSWORD: /run/secrets/DB_PASSWORD
+      DATABASE_NAME: /run/secrets/DB_NAME
+      DATABASE_HOST: "mysql-dev"  # Connects using the container name
+    networks:
+      - app_network
+    secrets:
+      - DB_PASSWORD
+      - DB_USER
+      - DB_NAME
+      - DB_HOST
+
+networks:
+  app_network:
+
+volumes:
+  mysql_data:
+
+secrets:
+  DB_PASSWORD:
+    file: ./secrets/db_password.txt
+  DB_USER:
+    file: ./secrets/db_user.txt
+  DB_NAME:
+    file: ./secrets/db_name.txt
+  DB_HOST:
+    file: ./secrets/db_host.txt
