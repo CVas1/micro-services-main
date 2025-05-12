@@ -20,8 +20,8 @@ import PrivateRoute from './components/private-route';
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <CartProvider>
-      <Auth0ProviderWithNavigate>
-        <BrowserRouter>
+      <BrowserRouter>
+        <Auth0ProviderWithNavigate>
           <Routes>
             <Route path="/" element={<App />} />
             <Route path="/landing" element={<LandingPage />} />
@@ -32,8 +32,8 @@ createRoot(document.getElementById('root')!).render(
             <Route path="/order" element={<OrderPage />} />
             <Route path="/order-info" element={<OrderInfoPage />} />
           </Routes>
-        </BrowserRouter>
-      </Auth0ProviderWithNavigate>
+        </Auth0ProviderWithNavigate>
+      </BrowserRouter>
     </CartProvider>
   </StrictMode>,
 );
