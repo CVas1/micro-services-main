@@ -33,7 +33,6 @@ def create_engine_with_retry(
                 raise
             time.sleep(delay)
 
-# replace your old create_engine(...) with this:
 engine = create_engine_with_retry(
     SQLALCHEMY_DATABASE_URL,
     pool_pre_ping=True,       # auto-check stale connections

@@ -1,12 +1,13 @@
 import threading
 from core import config
 from fastapi import FastAPI, Depends
+from fastapi.middleware.cors import CORSMiddleware
 from db.dependencies import get_db
 from sqlalchemy.orm import Session
 from contextlib import asynccontextmanager
 from db.base import engine, Base
 from entity import payment
-from api.endpoints import payments
+from api.endpoints import payments, logs
 from services.rabbitmq_consumer import get_consumer_service
 
 @asynccontextmanager
@@ -28,8 +29,18 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-app.include_router(payments.router)
 
+# Add CORS middleware
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],  # Allows all origins
+    allow_credentials=True,
+    allow_methods=["*"],  # Allows all methods
+    allow_headers=["*"],  # Allows all headers
+)
+
+app.include_router(payments.router)
+app.include_router(logs.router)
 @app.get("/")
 async def root(db: Session = Depends(get_db)):
     return {"message": "Hello World"}

@@ -104,6 +104,8 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
+      AUTHERIZATION_SERVER_URL: http://auth-service
+      AUTHORIZATION_SERVER_PORT: 8086
     depends_on:
       mysql:
         condition: service_healthy
@@ -127,6 +129,8 @@ services:
       RABBITMQ_PORT: 5672
       RABBITMQ_USER: guest
       RABBITMQ_PASSWORD: guest
+      AUTHERIZATION_SERVER_URL: http://auth-service
+      AUTHORIZATION_SERVER_PORT: 8086
     depends_on:
       mysql:
         condition: service_healthy
@@ -150,7 +154,7 @@ services:
       REDIS_PORT: 6379
       REDIS_DB: 0
       AUTHERIZATION_SERVER_HOST: http://auth-service
-      AUTHERIZATION_SERVER_PORT: 8086
+      AUTHORIZATION_SERVER_PORT: 8086
     depends_on:
       rabbitmq:
         condition: service_healthy

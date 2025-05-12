@@ -111,7 +111,7 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
                 new ProblemDetails { Detail = "Unexpected error." })
         };
     }
-
+    [Authorize(Roles = "Customer")]
     [HttpPost("/customer-policy")]
     public  IActionResult CheckForCustomerPolicy([FromBody] CheckForPolicyRequest request)
     {
@@ -125,7 +125,6 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
                 new ProblemDetails { Detail = "Unexpected error." })
         };
     }
-
     [Authorize(Roles = "Vendor")]
     [HttpPost("/vendor-policy")]
     public  IActionResult CheckForVendorPolicy([FromBody] CheckForPolicyRequest request)
@@ -140,7 +139,6 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
                 new ProblemDetails { Detail = "Unexpected error." })
         };
     }
-
     [Authorize(Roles = "Admin")]
     [HttpPost("/admin-policy")]
     public  IActionResult CheckForAdminPolicy([FromBody] CheckForPolicyRequest request)
@@ -155,7 +153,6 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
                 new ProblemDetails { Detail = "Unexpected error." })
         };
     }
-
     [Authorize(Roles = "Admin")]
     [HttpGet("/user/{email}")]
     public async Task<IActionResult> GetUserInfo([FromRoute] string email)
@@ -176,7 +173,6 @@ public class AuthenticationController(IAccountService accountService, ITokenServ
                 new ProblemDetails { Detail = "Unexpected error." })
         };
     }
-
     [Authorize(Roles = "Customer")]
     [HttpPut("/customer/{email}")]
     public async Task<IActionResult> UpdateCustomerInfo([FromRoute] string email, [FromBody] UpdateCustomerRequest request)

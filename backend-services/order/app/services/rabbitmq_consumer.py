@@ -14,6 +14,8 @@ import json
 from core import config
 from services.order_service import OrderService, get_order_service
 from services.rabbitmq_publisher import RabbitMQPublisher, get_publisher_service
+from logger import logger
+
 class RabbitMQConsumer:
     def __init__(self, queue: str, order_service: OrderService, publisher: RabbitMQPublisher):
         self.order_service = order_service
@@ -41,9 +43,13 @@ class RabbitMQConsumer:
 
     def connect(self):
         """Establish the connection and declare the queue."""
-        self.connection = pika.BlockingConnection(self.connection_params)
-        self.channel = self.connection.channel()
-        self.channel.queue_declare(queue=self.queue, durable=True)
+        try:
+            self.connection = pika.BlockingConnection(self.connection_params)
+            self.channel = self.connection.channel()
+            self.channel.queue_declare(queue=self.queue, durable=True)
+        except Exception as e:
+            logger.error(f"Error connecting to RabbitMQ: {str(e)}")
+            raise
 
     def callback(self, ch, method, properties, body):
         """Callback function to process incoming messages."""
@@ -55,35 +61,46 @@ class RabbitMQConsumer:
             if event_type in self.event_handlers:
                 self.event_handlers[event_type](message)
             else:
-                print(f"Unhandled event type: {event_type}")
+                logger.warning(f"Unhandled event type: {event_type}")
 
             # Acknowledge the message after processing
             ch.basic_ack(delivery_tag=method.delivery_tag)
         except Exception as e:
-            print("Error processing message:", e)
+            logger.error(f"Error processing message: {str(e)}")
             # Optionally, you might choose to nack the message or log it for further inspection
 
     def handle_order_created(self, message):
         """Handle order creation logic."""
-        data = message.get("data", {})
-        transection_id = message.get("transaction_id")
-        order = self.order_service.create_order(
-            order_data=data, transaction_id=transection_id
-        )
-        self.publisher.publish_order_created_response(order_id=order.id, transaction_id=transection_id)
+        try:
+            data = message.get("data", {})
+            transection_id = message.get("transaction_id")
+            order = self.order_service.create_order(
+                order_data=data, transaction_id=transection_id
+            )
+            self.publisher.publish_order_created_response(order_id=order.id, transaction_id=transection_id)
+        except Exception as e:
+            logger.error(f"Error handling order creation: {str(e)}")
+            raise
 
     def handle_update_order_payment_id(self, message):
         """Handle order payment ID update logic."""
-        data = message.get("data", {})
-        order_id = data.get("order_id")
-        payment_id = data.get("payment_id")
-        self.order_service.update_order_payment(order_id, payment_id)
+        try:
+            data = message.get("data", {})
+            order_id = data.get("order_id")
+            payment_id = data.get("payment_id")
+            self.order_service.update_order_payment(order_id, payment_id)
+        except Exception as e:
+            logger.error(f"Error updating order payment ID: {str(e)}")
+            raise
 
-        
     def handle_rollback_order(self, message):
         """Handle order rollback logic."""
-        transaction_id = message.get("transaction_id")
-        self.order_service.rollback_order(transaction_id)
+        try:
+            transaction_id = message.get("transaction_id")
+            self.order_service.rollback_order(transaction_id)
+        except Exception as e:
+            logger.error(f"Error rolling back order: {str(e)}")
+            raise
 
     def start_consuming(self):
         """Start consuming messages from the specified queue."""
@@ -95,11 +112,11 @@ class RabbitMQConsumer:
             queue=self.queue,
             on_message_callback=self.callback
         )
-        print(f"Started consuming on queue: {self.queue}")
+        logger.info(f"Started consuming on queue: {self.queue}")
         try:
             self.channel.start_consuming()
         except Exception as e:
-            print("Error during consuming:", e)
+            logger.error(f"Error during consuming: {str(e)}")
         finally:
             if self.connection and not self.connection.is_closed:
                 self.connection.close()

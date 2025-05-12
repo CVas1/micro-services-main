@@ -42,7 +42,7 @@ builder.Services.AddAuthentication(options =>
 })
 .AddJwtBearer(options =>
 {
-    options.Authority = "https://YOUR_AUTH0_DOMAIN/";
+    options.Authority = "https://dev-kf1qu7hinhsjitd4.eu.auth0.com/";
     options.Audience = "my-secure-api";
     options.TokenValidationParameters = new TokenValidationParameters
     {
@@ -54,6 +54,7 @@ builder.Services.AddAuthentication(options =>
 });
 
 builder.Services.AddAuthorization();
+
 
 var app = builder.Build();
 
@@ -69,6 +70,7 @@ if (app.Environment.IsDevelopment())
 app.UseHttpsRedirection();
 
 app.UseAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();

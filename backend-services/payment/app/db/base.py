@@ -1,12 +1,11 @@
-# db/base.py
 import time
-
 from sqlalchemy import create_engine
 from sqlalchemy.exc import OperationalError
 from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 
 from core.config import SQLALCHEMY_DATABASE_URL
+from logger import logger  # Import your custom logger
 
 def create_engine_with_retry(
     url: str,
@@ -21,24 +20,23 @@ def create_engine_with_retry(
     for attempt in range(1, retries + 1):
         try:
             engine = create_engine(url, **engine_kwargs)
-            # test the connection immediately
             with engine.connect():
                 pass
-            print(f"✅ Database connected on attempt {attempt}")
+            logger.info(f"✅ Database connected on attempt {attempt}")
             return engine
         except OperationalError as e:
-            print(f"⚠️  DB connect failed (attempt {attempt}/{retries}): {e}")
+            logger.warning(f"⚠️  DB connect failed (attempt {attempt}/{retries}): {e}")
             if attempt == retries:
-                print("❌ All retries exhausted, raising error")
+                logger.error("❌ All DB retries exhausted, raising error")
                 raise
             time.sleep(delay)
 
-# replace your old create_engine(...) with this:
+# Replace direct engine creation with retry-enabled logic
 engine = create_engine_with_retry(
     SQLALCHEMY_DATABASE_URL,
-    pool_pre_ping=True,       # auto-check stale connections
-    pool_size=10,             # optional, tune as you like
-    max_overflow=20,          # optional
+    pool_pre_ping=True,
+    pool_size=10,
+    max_overflow=20,
 )
 
 SessionLocal = sessionmaker(

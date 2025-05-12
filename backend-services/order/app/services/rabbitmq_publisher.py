@@ -2,6 +2,7 @@
 import pika
 import json
 from core import config
+from logger import logger
 
 class RabbitMQPublisher:
     def __init__(self):
@@ -19,8 +20,12 @@ class RabbitMQPublisher:
 
     def connect(self):
         """Establish connection and channel."""
-        self.connection = pika.BlockingConnection(self.connection_params)
-        self.channel = self.connection.channel()
+        try:
+            self.connection = pika.BlockingConnection(self.connection_params)
+            self.channel = self.connection.channel()
+        except Exception as e:
+            logger.error(f"Error connecting to RabbitMQ: {str(e)}")
+            raise
 
     def publish_message(self, message: dict, queue: str):
         """Publish a message to the specified RabbitMQ queue."""
@@ -30,14 +35,19 @@ class RabbitMQPublisher:
         # Declare the queue dynamically based on the provided name
         self.channel.queue_declare(queue=queue, durable=True)
         
-        self.channel.basic_publish(
-            exchange='',
-            routing_key=queue,
-            body=json.dumps(message),
-            properties=pika.BasicProperties(
-                delivery_mode=2  # make message persistent
+        try:
+            self.channel.basic_publish(
+                exchange='',
+                routing_key=queue,
+                body=json.dumps(message),
+                properties=pika.BasicProperties(
+                    delivery_mode=2  # make message persistent
+                )
             )
-        )
+            logger.info(f"Message published successfully to queue {queue}: {message}")
+        except Exception as e:
+            logger.error(f"Error publishing message to queue {queue}: {str(e)}")
+            raise
     
     def publish_order_created_response(self, order_id: str, transaction_id: str):
         command = {
@@ -51,11 +61,9 @@ class RabbitMQPublisher:
         }
         self.publish_message(command, config.RABBITMQ_ORCHESTRATION_QUEUE)
 
-
     def close(self):
         if self.connection and not self.connection.is_closed:
             self.connection.close()
-
 
 def get_publisher_service() -> RabbitMQPublisher:
     return RabbitMQPublisher()

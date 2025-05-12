@@ -2,6 +2,7 @@
 from fastapi import Depends, HTTPException, Security
 from fastapi.security import APIKeyHeader
 from services.auth_service import AuthenticationService, get_auth_service
+from logger import logger
 
 
 api_key_header = APIKeyHeader(name="Authorization", auto_error=True)
@@ -15,7 +16,8 @@ async def admin_auth_dependency(
     except HTTPException as http_exc:
         raise http_exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail="Unexpected error during admin authentication")
+        logger.error(f"Admin authentication failed: {str(exc)}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
     return {"status": "authenticated"}
 
 async def customer_auth_dependency(
@@ -27,7 +29,8 @@ async def customer_auth_dependency(
     except HTTPException as http_exc:
         raise http_exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail="Unexpected error during customer authentication")
+        logger.error(f"Customer authentication failed: {str(exc)}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
     return {"status": "authenticated"}
 
 async def vendor_auth_dependency(
@@ -39,5 +42,6 @@ async def vendor_auth_dependency(
     except HTTPException as http_exc:
         raise http_exc
     except Exception as exc:
-        raise HTTPException(status_code=500, detail="Unexpected error during vendor authentication")
+        logger.error(f"Vendor authentication failed: {str(exc)}")
+        raise HTTPException(status_code=401, detail="Authentication failed")
     return {"status": "authenticated"}

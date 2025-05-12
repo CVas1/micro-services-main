@@ -1,6 +1,5 @@
-"""Order bisuness logic."""
+"""Order business logic."""
 from datetime import datetime
-from fastapi import Depends
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy.exc import IntegrityError, SQLAlchemyError
 from core import config
@@ -8,6 +7,7 @@ from services.rabbitmq_publisher import get_publisher_service
 from entity.order import Order
 from entity.order_item import OrderItem
 from db.dependencies import get_db
+from logger import logger
 
 class OrderService:
     """
@@ -31,11 +31,12 @@ class OrderService:
             return orders
         
         except SQLAlchemyError as e:
+            logger.error(f"Database error while retrieving orders: {str(e)}")
             raise SQLAlchemyError(f"Database error while retrieving orders: {str(e)}")
         
         except Exception as e:
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
-
 
     def get_user_orders(self, email: str) -> list[Order]:
         """
@@ -63,9 +64,11 @@ class OrderService:
             return orders
         
         except SQLAlchemyError as e:
+            logger.error(f"Database error while retrieving orders for user {email}: {str(e)}")
             raise SQLAlchemyError(f"Database error while retrieving orders for user {email}: {str(e)}")
         
         except Exception as e:
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
 
     def get_order_by_id(self, order_id: str) -> Order:
@@ -94,9 +97,11 @@ class OrderService:
             return order
         
         except SQLAlchemyError as e:
+            logger.error(f"Database error while retrieving order with ID {order_id}: {str(e)}")
             raise SQLAlchemyError(f"Database error while retrieving order with ID {order_id}: {str(e)}")
         
         except Exception as e:
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
 
     def create_order(self, order_data: dict, transaction_id: str) -> Order:
@@ -155,22 +160,27 @@ class OrderService:
         
         except KeyError as e:
             self.db.rollback()
+            logger.error(f"Missing required field: {str(e)}")
             raise KeyError(f"Missing required field: {str(e)}")
         
         except ValueError as e:
             self.db.rollback()
+            logger.error(f"Invalid data: {str(e)}")
             raise ValueError(f"Invalid data: {str(e)}")
         
         except IntegrityError as e:
             self.db.rollback()
+            logger.error(f"Database integrity error: {str(e)}")
             raise ValueError(f"Database integrity error: {str(e)}")
         
         except SQLAlchemyError as e:
             self.db.rollback()
+            logger.error(f"Database error: {str(e)}")
             raise SQLAlchemyError(f"Database error: {str(e)}")
         
         except Exception as e:
             self.db.rollback()
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
         
     def update_order_status(self, order_id: str, new_status: str) -> Order:
@@ -207,10 +217,12 @@ class OrderService:
         
         except SQLAlchemyError as e:
             self.db.rollback() 
+            logger.error(f"Database error while updating order status: {str(e)}")
             raise SQLAlchemyError(f"Database error while updating order status: {str(e)}")
         
         except Exception as e:
             self.db.rollback()  
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
 
     def update_order_payment(self, order_id: str, payment_id: str) -> Order:
@@ -248,10 +260,12 @@ class OrderService:
         
         except SQLAlchemyError as e:
             self.db.rollback()  
+            logger.error(f"Database error while updating payment ID: {str(e)}")
             raise SQLAlchemyError(f"Database error while updating payment ID: {str(e)}")
         
         except Exception as e:
             self.db.rollback() 
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
 
     def update_order_delivery_date(self, order_id: str) -> Order:
@@ -284,10 +298,12 @@ class OrderService:
         
         except SQLAlchemyError as e:
             self.db.rollback()  
+            logger.error(f"Database error while updating delivery date: {str(e)}")
             raise SQLAlchemyError(f"Database error while updating delivery date: {str(e)}")
         
         except Exception as e:
             self.db.rollback()  
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
 
     def update_order_address(self, order_id: str, new_address: str) -> Order:
@@ -325,10 +341,12 @@ class OrderService:
         
         except SQLAlchemyError as e:
             self.db.rollback()  
+            logger.error(f"Database error while updating delivery address: {str(e)}")
             raise SQLAlchemyError(f"Database error while updating delivery address: {str(e)}")
         
         except Exception as e:
             self.db.rollback()  
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
         
 
@@ -361,10 +379,12 @@ class OrderService:
         
         except SQLAlchemyError as e:
             self.db.rollback()  
+            logger.error(f"Database error while deleting order: {str(e)}")
             raise SQLAlchemyError(f"Database error while deleting order: {str(e)}")
         
         except Exception as e:
             self.db.rollback()  
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
     
     def rollback_order(self, transaction_id: str) -> None:
@@ -382,35 +402,45 @@ class OrderService:
         
         except SQLAlchemyError as e:
             self.db.rollback()  
+            logger.error(f"Database error while rolling back order: {str(e)}")
             raise SQLAlchemyError(f"Database error while rolling back order: {str(e)}")
         
         except Exception as e:
             self.db.rollback()  
+            logger.error(f"An unexpected error occurred: {str(e)}")
             raise Exception(f"An unexpected error occurred: {str(e)}")
 
-    def test_publish_rabbit_mq(self):
+    def get_vendor_orders(self, vendor_email: str) -> list[Order]:
         """
-        Test RabbitMQ connection and publish a message.
-        """
-        try:
-            # Create a connection to RabbitMQ
-            publisher = get_publisher_service()
-            publisher.connect()
-            
-            # Publish a test message to the 'test' queue
-            message = {"message": "Hello, RabbitMQ!"}
-            message2 = {"event": "order_created", "data": {"order_id": 123, "customer": "Alice"}}
-            publisher.publish_message(message, config.RABBITMQ_PRODUCTS_QUEUE)
-            publisher.publish_message(message2, config.RABBITMQ_ORDERS_QUEUE)
+        Retrieve all orders for the specified vendor.
 
+        Args:
+            vendor_email (str): The email of the vendor whose orders are to be retrieved.
+
+        Returns:
+            List[Order]: A list of orders for the specified vendor.
+
+        Raises:
+            SQLAlchemyError: If there is a database error.
+            ValueError: If the email is invalid or no orders are found.
+        """
+        
+        try:
+            orders = self.db.query(Order).filter(Order.vendor_email == vendor_email).options(joinedload(Order.items)).all()
             
-            # Close the connection
-            publisher.close()
+            if not orders:
+                return []
             
-            return "Message published successfully."
+            return orders
+        
+        except SQLAlchemyError as e:
+            logger.error(f"Database error while retrieving orders for vendor {vendor_email}: {str(e)}")
+            raise SQLAlchemyError(f"Database error while retrieving orders for vendor {vendor_email}: {str(e)}")
         
         except Exception as e:
-            return f"An error occurred: {str(e)}"
+            logger.error(f"An unexpected error occurred: {str(e)}")
+            raise Exception(f"An unexpected error occurred: {str(e)}")
+
 def get_order_service() -> OrderService:
     """
     Create an instance of the OrderService class."

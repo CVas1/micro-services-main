@@ -4,8 +4,8 @@ import { useNavigate } from "react-router-dom";
 const Auth0ProviderWithNavigate = ({ children }: any) => {
     const navigate = useNavigate();
 
-    const domain = process.meta.env.VITE_AUTH0_DOMAIN;
-    const clientId = process.meta.env.VITE_AUTH0_CLIENT_ID;
+    const domain = import.meta.env.VITE_AUTH0_DOMAIN;
+const clientId = import.meta.env.VITE_AUTH0_CLIENT_ID;
 
     if (!domain || !clientId) return null;
 
